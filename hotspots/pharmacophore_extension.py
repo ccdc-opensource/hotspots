@@ -15,6 +15,7 @@ from ccdc.molecule import Molecule, Atom, Coordinates
 from ccdc.descriptors import GeometricDescriptors
 from ccdc import utilities
 from ccdc.utilities import PushDir
+from ccdc import _find_crossminer_feature_directory as find_crossminer
 
 from hotspots.grid_extension import Grid
 from hotspots.wrapper_pdb import PDBResult
@@ -305,14 +306,16 @@ class PharmacophoreModel(Pharmacophore.Query):
 
     def __init__(self, features=None, _motif_pharmacophore=None):
         super().__init__(features=features, _motif_pharmacophore=_motif_pharmacophore)
-        self.cm_dir = os.path.dirname(os.path.dirname(csd_directory()))
-
-        feat_db = os.environ.get("CCDC_CROSSMINER_FEATURE_DEFINITIONS", os.path.join(self.cm_dir,
-                                                                      "../CSD_CrossMiner/feature_definitions"))
-
+        self.cm_dir = find_crossminer()
+        if self.cm_dir:
+            print("Crossminer automatically located")
+        if not self.cm_dir:
+            self.cm_dir = os.path.join(os.path.dirname(os.path.dirname(csd_directory())), "Discovery_2022/CSD_CrossMiner/feature_definitions")
+            print("Crossminer location manually defined")
+        feat_db = os.environ.get("CCDC_CROSSMINER_FEATURE_DEFINITIONS", self.cm_dir)
         Pharmacophore.read_feature_definitions(directory=feat_db)
         self.__feature_options = {k: v for k, v in Pharmacophore.feature_definitions.items()}
-        assert len(self.__feature_options) > 1
+        assert len(self.__feature_options) > 1, "no Crossminer features detected"
 
         self.__feature_definitions = self.__feature_options
 

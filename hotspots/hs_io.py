@@ -412,7 +412,7 @@ class HotspotReader(object):
 
     def _generate_result(self, path):
         with PushDir(path):
-            files = set(listdir(path))
+            files = set(listdir())
 
             # fetch protein - this should always be protein.pdb
             prot_name = [f for f in files if f.split(".")[1] == self.supported_protein_extensions][0]

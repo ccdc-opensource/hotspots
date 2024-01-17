@@ -34,6 +34,7 @@ from skimage.morphology import ball
 from skimage.transform import resize
 # from hotspots.protoss import Protoss
 from tqdm import tqdm
+from time import perf_counter
 
 # Development note. We import the CCDC modules after 3rd part modules where possible as
 # we generally find that the ccdc package is less fussy about the underlying compiled
@@ -543,7 +544,7 @@ class Runner(object):
 
             return active_coords_dic
 
-        def sample(self, molecule, probe, update_grids = True):
+        def sample(self, molecule, probe, update_grids=True):
             """
             Sample the grids according to the settings
 
@@ -882,6 +883,7 @@ class Runner(object):
         :return:
         """
         print("Start atomic hotspot detection\n        Processors: {}".format(self.nprocesses))
+        t_ah1 = perf_counter()
         a = _AtomicHotspot()
         a.settings.atomic_probes = {"apolar": "AROMATIC CH CARBON",
                                     "donor": "UNCHARGED NH NITROGEN",
@@ -894,19 +896,24 @@ class Runner(object):
                                            nthreads=self.nprocesses,
                                            cavity_origins=self.cavities)
 
-        if self.clear_tmp == True:
+        if self.clear_tmp:
             shutil.rmtree(a.settings.temp_dir)
 
-        print("Atomic hotspot detection complete\n")
+        t_ah2 = perf_counter()
+        print(f"Atomic hotspot detection complete in {t_ah2-t_ah1:.2f} seconds\n")
 
         print("Start buriedness calculation")
+        t_bur = perf_counter()
         if self.buriedness_method.lower() == 'ghecom' and self.buriedness is None:
             print("    method: Ghecom")
             out_grid = self.superstar_grids[0].buriedness.copy_and_clear()
 
             ghecom = Ghecom()
             path = ghecom.run(self.protein)
+
+            t_p2g = perf_counter()
             self.buriedness = ghecom.pdb_to_grid(path, out_grid)
+            print(f"Time to convert pdb to grid = {perf_counter()-t_p2g:.2f} seconds")
 
             shutil.rmtree(ghecom.temp) # probs not needed
 
@@ -923,12 +930,14 @@ class Runner(object):
 
         self.weighted_grids = self._get_weighted_maps()
 
-        print("Buriedness calcualtion complete\n")
+        print(f"Buriedness calculation complete in {perf_counter() - t_bur:.2f} seconds\n")
 
         print("Start sampling")
+        t_samp = perf_counter()
         grid_dict = {w.identifier: w.grid for w in self.weighted_grids}
 
         for probe in probe_types:
+            t_probe = perf_counter()
             if return_probes is True:
                 ps = self._get_out_maps(probe, grid_dict, return_probes=True)
                 print(len(ps))
@@ -936,8 +945,9 @@ class Runner(object):
 
             else:
                 self._get_out_maps(probe, grid_dict)
+            print(f"Sampling with {probe} complete in {perf_counter()-t_probe:.1f} seconds")
 
-        print("Sampling complete\n")
+        print(f"All sampling complete in {perf_counter()-t_samp:.1f} seconds\n")
 
     def _prepare_protein(self, protoss=False):
         """
@@ -953,7 +963,7 @@ class Runner(object):
             self.protein.add_hydrogens()
 
     def from_superstar(self, protein, superstar_grids, buriedness, charged_probes=False, probe_size=7,
-                       settings=None, clear_tmp=False):
+                       settings=None, clear_tmp=True):
         """
         calculate hotspot maps from precalculated superstar maps. This enables more effective parallelisation and reuse
         of object such as the Buriedness grids
@@ -1002,7 +1012,7 @@ class Runner(object):
 
 
     def from_protein(self, protein, charged_probes=False, probe_size=7, buriedness_method='ghecom',
-                     cavities=None, nprocesses=1, settings=None, buriedness_grid=None, clear_tmp=False):
+                     cavities=None, nprocesses=1, settings=None, buriedness_grid=None, clear_tmp=True):
         """
         generates a result from a protein
 
@@ -1039,7 +1049,6 @@ class Runner(object):
         self.cavities = cavities
         self.clear_tmp = clear_tmp
 
-        print(self.cavities)
         self.nprocesses = nprocesses
         if settings is None:
             self.sampler_settings = self.Settings()
@@ -1047,7 +1056,7 @@ class Runner(object):
             self.sampler_settings = settings
         self._calc_hotspots()  # return probes = False by default
         self.super_grids = {p: g[0] for p, g in self.out_grids.items()}
-        print("Runtime = {}seconds".format(time.time() - start))
+        print(f"Runtime for 'from_protein' function = {time.time() - start:.2f} seconds")
 
         return Results(super_grids=self.super_grids,
                        protein=self.protein,
@@ -1056,7 +1065,7 @@ class Runner(object):
                        weighted_superstar={x.identifier: x.grid for x in self.weighted_grids})
 
     def from_pdb(self, pdb_code, charged_probes=False, probe_size=7, buriedness_method='ghecom', nprocesses=3,
-                 cavities=False, settings=None, clear_tmp=False):
+                 cavities=False, settings=None, clear_tmp=True):
         """
         generates a result from a pdb code
 

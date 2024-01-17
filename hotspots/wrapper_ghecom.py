@@ -34,6 +34,7 @@ class Ghecom(object):
                 writer.write(protein)
 
                 cmd = f"{os.environ['GHECOM_EXE']} -ipdb {self.input} -M M -gw {grid_spacing} -rli 2.5 -rlx 9.5 -opocpdb {self.output}"
+                print("Ghecom command:", cmd)
                 os.system(cmd)
 
         return os.path.join(self.temp, self.output)

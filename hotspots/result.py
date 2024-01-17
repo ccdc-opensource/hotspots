@@ -131,14 +131,14 @@ class _Scorer(Helper):
             if projected:
                 s = feat.get_projected()[0]
                 coords = (s.centre[0], s.centre[1], s.centre[2])
-                print(coords)
+                # print(coords)
                 score = self.hotspot_result.super_grids[probe].value_at_coordinate(coords, tolerance=1, position=False)
             else:
                 s = feat.get_point()[0]
                 coords = (s.centre[0], s.centre[1], s.centre[2])
-                print(coords)
+                # print(coords)
                 score = self.hotspot_result.super_grids[probe].value_at_coordinate(coords, tolerance=3, position=False)
-            print(feat.label, feat.point_atom, feat.get_point(), feat.get_projected())
+            # print(feat.label, feat.point_atom, feat.get_point(), feat.get_projected())
 
             feat_info = {'feature_type': feat.description,
                          'point_atom': feat.point_atom,
@@ -155,10 +155,16 @@ class _Scorer(Helper):
 
         for atom in prot.atoms:
             try:
-                atom_coords = (atom.coordinates[0], atom.coordinates[1], atom.coordinates[2])
+                # Rounding is necessary to get coordinates to match
+                atom_coords = (round(atom.coordinates[0],4), round(atom.coordinates[1], 4), round(atom.coordinates[2],4))
                 feat_info = atom_coordinate_dict[atom_coords]
                 max_score = max([f['score'] for f in feat_info])
-                self.protein_score_dict[atom.index] = max_score
+                if max_score == 0:
+                    continue
+                feat_type = [f['feature_type'] for f in feat_info if f['score'] == max_score]
+
+                # record probe type, atom info, and score
+                self.protein_score_dict[atom.index] = (feat_type, atom.chain_label, atom.residue_label, max_score)
             except KeyError:
                 continue
 
