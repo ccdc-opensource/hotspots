@@ -19,4 +19,7 @@ Instructions:
 8 - run the "hotspots_json_out.py" script, with the directory containing the PDB or mmCIF files as an argument
 	$ python hotspots_json_out.py <path_to_files>
 
-The results should be a nested folder containing information about the protein's hotspots as both a csv file and a json, and another csv file containing information about the timings for different parts of the process. This second csv file also acts as a record of the files processed so far, so if the program crashes it will check automatically to avoid repeating files. If you want to run the same file again you can either edit or delete this csv file.
+The results should be a nested folder containing information about the protein's hotspots as both a csv file and a json.
+There will also be another csv file containing information about the timings for different parts of the process.
+This second csv file also acts as a record of the files processed so far, so if the program crashes it will check automatically to avoid repeating files. 
+If you want to run the same file again you can either edit or delete this csv file.
