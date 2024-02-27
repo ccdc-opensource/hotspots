@@ -17,16 +17,20 @@ from ccdc.io import MoleculeWriter, _CSDDatabaseLocator
 from ccdc.molecule import Molecule, Atom
 from ccdc.protein import Protein
 from ccdc.utilities import _private_importer
-with _private_importer():
-    import ChemicalAnalysisLib
-    import ConformerGeneratorLib
+# with _private_importer():
+#     import ChemicalAnalysisLib37 as ChemicalAnalysisLib
+#     import ConformerGeneratorLib37 as ConformerGeneratorLib
+
+with _private_importer() as pi:
+    pi.import_ccdc_module('ChemicalAnalysisLib')
+    pi.import_ccdc_module('ConformerGeneratorLib')
 
 from hotspots import calculation
 from hotspots import hs_io
 from hotspots import hs_docking
 from hotspots import hs_utilities
 from hotspots import result
-from hotspots.pdb_python_api import _Ligand, PDBResult
+from hotspots.wrapper_pdb import _Ligand, PDBResult
 
 
 class Organiser(argparse.ArgumentParser):
