@@ -7,7 +7,8 @@ Instructions:
 	$ conda env create -f environment.yaml
 4 - change to the new environment
 	$ conda activate csd_hotspots
-5 - install the hotspots package using pip
+5 - go back to the parent directory, and install the hotspots package using pip
+	$ cd ..
 	$ pip install ./hotspots
 6 - if not already available, download ghecom from https://pdbj.org/ghecom/download_src.html and put it in a directory where it can be unpacked. Using the current latest version the commands would be:
 	$ cd <wherever the ghecom package is located>
@@ -17,7 +18,7 @@ Instructions:
 7 - add an environment variable for ghecom:
 	$ export GHECOM_EXE=<wherever the ghecom package is located>/ghecom
 8 - run the "hotspots_json_out.py" script, with the directory containing the PDB or mmCIF files as an argument
-	$ python hotspots_json_out.py <path_to_files>
+	$ python hotspots/hotspots_json_out.py <path_to_files>
 
 The results should be a nested folder containing information about the protein's hotspots as both a csv file and a json.
 There will also be another csv file containing information about the timings for different parts of the process.
