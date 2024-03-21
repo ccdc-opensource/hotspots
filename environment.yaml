@@ -1,19 +1,12 @@
-name: csd_hotspots
+name: csd_hotspots_test
 channels:
   - defaults
   - conda-forge
   - https://conda.ccdc.cam.ac.uk/
 dependencies:
   - python=3.7
-  - lxml=4.9
-  - numpy=1.21
-  - pandas=1.2.5
-  - pillow=9
-  - scikit-learn=0
-  - protobuf=3.20
-  - xgboost=1.5
-#  - matplotlib
-  - rdkit=2020.09.1.0
-  - biopython=1.79
-  - intel::tensorflow
+  - rdkit::rdkit
+  - conda-forge::biopython
+  - intel::tensorflow=2.8.0
   - csd-python-api
+
