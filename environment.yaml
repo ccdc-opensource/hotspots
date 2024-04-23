@@ -1,4 +1,4 @@
-name: csd_hotspots_test
+name: csd_hotspots
 channels:
   - defaults
   - conda-forge
