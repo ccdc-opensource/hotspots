@@ -7,6 +7,5 @@ dependencies:
   - python=3.7
   - rdkit::rdkit
   - conda-forge::biopython
-  - intel::tensorflow=2.8.0
   - csd-python-api
 
