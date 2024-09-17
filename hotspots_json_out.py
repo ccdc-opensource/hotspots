@@ -17,6 +17,15 @@ NUM_ROTS = 3000
 
 def find_hotspots(file, args, profile=False):
     pdb_id, file_type = file.split(".")
+    
+    out_dir = f"{args.input_dir}/results/{NUM_ROTS}/{pdb_id}_{file_type}"
+
+    if not os.path.exists(f"{args.input_dir}/results"):
+        os.mkdir(f"{args.input_dir}/results")
+    if not os.path.exists(f"{args.input_dir}/results/{NUM_ROTS}"):
+        os.mkdir(f"{args.input_dir}/results/{NUM_ROTS}")
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
 
     timings = {"pdb_id": pdb_id,
                "file_type": file_type}
@@ -34,18 +43,19 @@ def find_hotspots(file, args, profile=False):
         prot.remove_ligand(l.identifier)
 
     # save and re-loading the protein was required at one point. It seems to give very similar results without it now, but I want to investigate further before removing it
-    with MoleculeWriter(f"edit_prot.mol2") as w:
+    mol2_file = os.path.join(out_dir, f"{pdb_id}_edit_prot.mol2")
+    with MoleculeWriter(mol2_file) as w:
         w.write(prot)
-    prot = Protein.from_file(f"edit_prot.mol2")
+    prot = Protein.from_file(mol2_file)
 
     t1 = perf_counter()
     timings['pre-processing'] = t1-t0
     if profile == True:
         print(f"Pre-processing protein = {t1-t0:.2f} seconds")
         
-    runner = Runner()
+    runner = Runner(pdb_id=pdb_id, output_path=out_dir, save_cavity=True)
+
     settings = Runner.Settings()
-    
     settings.nrotations = NUM_ROTS
    
     # Only SuperStar jobs are parallelised (one job per processor). By default there are 3 jobs, when calculating charged interactions there are 5.
@@ -60,14 +70,6 @@ def find_hotspots(file, args, profile=False):
     timings['calculation'] = t2-t1
     if profile:
         print(f"Whole calculation process = {t2-t1:.1f} seconds")
-    out_dir = f"{args.input_dir}/results/{NUM_ROTS}/{pdb_id}_{file_type}"
-
-    if not os.path.exists(f"{args.input_dir}/results"):
-        os.mkdir(f"{args.input_dir}/results")
-    if not os.path.exists(f"{args.input_dir}/results/{NUM_ROTS}"):
-        os.mkdir(f"{args.input_dir}/results/{NUM_ROTS}")
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
 
         # Creates "results/pdb1/out.zip"
     # with HotspotWriter(out_dir) as writer:

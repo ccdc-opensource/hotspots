@@ -20,6 +20,7 @@ import operator
 import random
 import shutil
 import sys
+import os
 import tempfile
 import time
 from functools import reduce
@@ -353,6 +354,7 @@ class Runner(object):
             """
             return int(float(500) / self.nrotations ** 3)
 
+
     class _Sampler(object):
         """
         Samples one or more grids with a probe molecule
@@ -608,7 +610,7 @@ class Runner(object):
                 # else:
                 #     return sampled_probes
 
-    def __init__(self, settings=None):
+    def __init__(self, settings=None, output_path=None, pdb_id=None, save_cavity=False):
         self.out_grids = {}
         self.super_grids = {}
         self.buriedness = None
@@ -618,6 +620,10 @@ class Runner(object):
             self.sampler_settings = self.Settings()
         else:
             self.sampler_settings = settings
+            
+        self.output_path = output_path
+        self.pdb_id = pdb_id
+        self.save_cavity = save_cavity
 
     @property
     def protein(self):
@@ -911,6 +917,13 @@ class Runner(object):
             ghecom = Ghecom()
             path = ghecom.run(self.protein)
 
+            if self.save_cavity and self.output_path:
+                cfile = os.path.basename(path)
+                if self.pdb_id:
+                    cfile = f"{self.pdb_id}_{cfile}"
+                cavity_copy = os.path.join(self.output_path, cfile)
+                shutil.copy2(path, cavity_copy)
+
             t_p2g = perf_counter()
             self.buriedness = ghecom.pdb_to_grid(path, out_grid)
             print(f"Time to convert pdb to grid = {perf_counter()-t_p2g:.2f} seconds")
@@ -1112,7 +1125,6 @@ class Runner(object):
             self.sampler_settings = settings
 
         if self.sampler_settings.return_probes is True:
-            print('here')
             self._calc_hotspots(return_probes=True)
 
         else:
