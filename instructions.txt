@@ -24,3 +24,8 @@ The results should be a nested folder containing information about the protein's
 There will also be another csv file containing information about the timings for different parts of the process.
 This second csv file also acts as a record of the files processed so far, so if the program crashes it will check automatically to avoid repeating files. 
 If you want to run the same file again you can either edit or delete this csv file.
+
+The ''--retain'' command line option allows intermediate files to be retained - current options are:
+
+  * mol2 - retain MOL2 file of protein after addition of hydrogens and removal of waters, cofactors and ligands. 
+  * cavity - retain output of cavity detection step - currently only applies for Ghecom cavity detection.
