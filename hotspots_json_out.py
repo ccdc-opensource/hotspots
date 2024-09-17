@@ -42,8 +42,12 @@ def find_hotspots(file, args, profile=False):
     for l in prot.ligands:
         prot.remove_ligand(l.identifier)
 
-    # save and re-loading the protein was required at one point. It seems to give very similar results without it now, but I want to investigate further before removing it
-    mol2_file = os.path.join(out_dir, f"{pdb_id}_edit_prot.mol2")
+    # Save and re-loading the protein was required at one point. It seems to give very similar results without it now but 
+    # need to investigate further before removing it.
+    # By default, MOL2 is (over)written in working directory unless it is to be retained.
+    mol2_file = "edit_prot.mol2" 
+    if "mol2" in args.retain:
+        mol2_file = os.path.join(out_dir, f"{pdb_id}_edit_prot.mol2")
     with MoleculeWriter(mol2_file) as w:
         w.write(prot)
     prot = Protein.from_file(mol2_file)
@@ -53,7 +57,9 @@ def find_hotspots(file, args, profile=False):
     if profile == True:
         print(f"Pre-processing protein = {t1-t0:.2f} seconds")
         
-    runner = Runner(pdb_id=pdb_id, output_path=out_dir, save_cavity=True)
+    save_cavity = "cavity" in args.retain
+    
+    runner = Runner(pdb_id=pdb_id, output_path=out_dir, save_cavity=save_cavity)
 
     settings = Runner.Settings()
     settings.nrotations = NUM_ROTS
@@ -61,7 +67,7 @@ def find_hotspots(file, args, profile=False):
     # Only SuperStar jobs are parallelised (one job per processor). By default there are 3 jobs, when calculating charged interactions there are 5.
     print("file_ID =", pdb_id)
     results = runner.from_protein(prot,
-                                  nprocesses=3,
+                                  nprocesses=1,
                                   charged_probes=False,
                                   buriedness_method='ghecom',
                                   settings=settings)
@@ -179,6 +185,9 @@ def find_hotspots(file, args, profile=False):
 
 
 if __name__ == '__main__':
+
+    retainable_files = ['mol2', 'cavity']
+    
     parser = argparse.ArgumentParser(description='Run Hotspots on all suitable files in a subdirectory')
     parser.add_argument('input_dir',
                         help='the subdirectory containing the input files',
@@ -186,6 +195,11 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--sort',
                         action='store_true',
                         help='sort all files by size and run smallest first')
+    parser.add_argument('--retain', 
+                        choices=retainable_files,
+			default=[],
+			nargs='*',
+			help='retain intermediate files')
     args = parser.parse_args()
 
     input_dir = WORKING_DIR / args.input_dir  
@@ -233,7 +247,7 @@ if __name__ == '__main__':
             print(f"{pdb_id} already processed")
             continue
         
-        try:
+        if 1:#try:
             timings = find_hotspots(file, args, profile=False)
             print(f"\n{file} processed in {timings['total']:.1f} seconds")
 
@@ -247,5 +261,5 @@ if __name__ == '__main__':
             print(f"{len(ref_df)} of {len(list_of_files)} files complete!\n")
             ref_df.to_csv("processed_files_and_timings.csv", index=False)
 
-        except Exception as error:
+        else:#except Exception as error:
             print(f"An error occurred for {file}:", type(error).__name__, "–", error)
