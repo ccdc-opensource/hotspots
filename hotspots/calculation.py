@@ -778,7 +778,7 @@ class Runner(object):
         :return:
         """
         num = int(num)
-        if num in range(0, int(multiprocessing.cpu_count())):
+        if num in range(0, int(multiprocessing.cpu_count())+1):
             self._nprocesses = num
         else:
             raise OSError("CPU count = {}".format(multiprocessing.cpu_count()))
