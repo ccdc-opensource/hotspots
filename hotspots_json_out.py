@@ -110,10 +110,9 @@ def find_hotspots(file, args, profile=False):
         "data_resource": "CSD/Fragment Hotspots",
         "resource_version": "CSD v5.45",
         "software_version": "Hotspots v1.06",
-        "resource_entry_url": "https://github.com/ccdc-opensource/hotspots",
+        "resource_entry_url": "https://www.ccdc.cam.ac.uk/open-source-products/fragment-hotspots/",
         "release_date": "20/02/2024",
         "pdb_id": pdb_id,
-        "filetype": file_type,
         "chains": [],
         "sites" : [],
         "evidence_code_ontology": [
@@ -128,7 +127,6 @@ def find_hotspots(file, args, profile=False):
         single_chain_df = single_chain_df.droplevel(0)
         
         chain_dict = {'chain_label' : chain,
-                    'additional_chain_annotations' : {},
                     'residues' : []
                     }
         
@@ -137,7 +135,6 @@ def find_hotspots(file, args, profile=False):
             try:
                 residue_dict = {'pdb_res_label' : re.findall("\d+", residue)[0],
                                 'aa_type' : re.findall("[A-Z]+", residue)[0],
-                            'additional_residue_annotations' : {},
                             'site_data' : []
                             }
             except:
