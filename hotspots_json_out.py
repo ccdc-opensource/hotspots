@@ -42,6 +42,18 @@ def find_hotspots(file, args, profile=False):
     for l in prot.ligands:
         prot.remove_ligand(l.identifier)
 
+    # Create lookup dictionaries of chain and residue IDs
+    chain_id_lookup = {}
+    residue_id_lookup = {}
+    for c in prot.chains:
+       chain_id_lookup[c.identifier] = c.author_identifier
+       residue_id_lookup[c.identifier] = {}
+       for r in c.residues:
+           # residue identifier is returned as "C:RES123" where "C" is chain ID
+           rid = r.identifier.split(":")[-1]
+           rid_author = r.author_identifier.split(":")[-1]
+           residue_id_lookup[c.identifier][rid] = rid_author
+
     # Save and re-loading the protein was required at one point. It seems to give very similar results without it now but 
     # need to investigate further before removing it.
     # By default, MOL2 is (over)written in working directory unless it is to be retained.
@@ -126,15 +138,17 @@ def find_hotspots(file, args, profile=False):
     for chain, single_chain_df in df.groupby(level=0):
         single_chain_df = single_chain_df.droplevel(0)
         
-        chain_dict = {'chain_label' : chain,
+        author_chain = chain_id_lookup[chain]
+        chain_dict = {'chain_label' : author_chain,
                     'residues' : []
                     }
         
         for residue in single_chain_df.index:
             residue_dict = {}
+            author_residue = residue_id_lookup[chain][residue]
             try:
-                residue_dict = {'pdb_res_label' : re.findall("\d+", residue)[0],
-                                'aa_type' : re.findall("[A-Z]+", residue)[0],
+                residue_dict = {'pdb_res_label' : re.findall("\d+", author_residue)[0],
+                                'aa_type' : re.findall("[A-Z]+", author_residue)[0],
                             'site_data' : []
                             }
             except:
