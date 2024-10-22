@@ -54,16 +54,6 @@ def find_hotspots(file, args, profile=False):
            rid_author = r.author_identifier.split(":")[-1]
            residue_id_lookup[c.identifier][rid] = rid_author
 
-    # Save and re-loading the protein was required at one point. It seems to give very similar results without it now but 
-    # need to investigate further before removing it.
-    # By default, MOL2 is (over)written in working directory unless it is to be retained.
-    mol2_file = "edit_prot.mol2" 
-    if "mol2" in args.retain:
-        mol2_file = os.path.join(out_dir, f"{pdb_id}_edit_prot.mol2")
-    with MoleculeWriter(mol2_file) as w:
-        w.write(prot)
-    prot = Protein.from_file(mol2_file)
-
     t1 = perf_counter()
     timings['pre-processing'] = t1-t0
     if profile == True:
@@ -145,6 +135,9 @@ def find_hotspots(file, args, profile=False):
         
         for residue in single_chain_df.index:
             residue_dict = {}
+            if residue not in residue_id_lookup[chain]:
+                print(f"WARNING: Skipping residue {residue} reported by hotspots as not in lookup table for {chain}")
+                continue
             author_residue = residue_id_lookup[chain][residue]
             try:
                 residue_dict = {'pdb_res_label' : re.findall("\d+", author_residue)[0],
