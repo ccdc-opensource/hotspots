@@ -190,7 +190,7 @@ def find_hotspots(file, args, profile=False):
 
 if __name__ == '__main__':
 
-    retainable_files = ['mol2', 'cavity']
+    retainable_files = ['cavity',]
     
     parser = argparse.ArgumentParser(description='Run Hotspots on all suitable files in a subdirectory')
     parser.add_argument('input_dir',
