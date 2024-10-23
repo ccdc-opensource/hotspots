@@ -876,7 +876,7 @@ class InteractionPharmacophoreModel(PharmacophoreModel):
             ipoint_index, fpoint_index = np.where(distance.cdist(ipoints, fpoints) < 0.01)
 
             for i, f in zip(ipoint_index, fpoint_index):
-                if identifier is "ring":
+                if identifier == "ring":
                     fd = Pharmacophore.feature_definitions["ring_planar_projected"]
 
                 # sphere from CrossMiner

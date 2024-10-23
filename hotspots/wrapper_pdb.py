@@ -173,7 +173,7 @@ class _Ligand(Helper):
         assert search_type in supported
 
         extension = "smilesQuery?smiles={0}&search_type={1}".format(self.smiles, search_type)
-        if search_type is 'similarity':
+        if search_type == 'similarity':
             extension += "&similarity={}".format(tanimoto)
 
         data = xmltodict.parse(self.url_request(extension=extension),
