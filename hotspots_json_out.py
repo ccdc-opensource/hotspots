@@ -14,6 +14,24 @@ import argparse
 WORKING_DIR = Path(__file__).parent.resolve()
 NUM_ROTS = 3000
 
+output_probe_label = {
+    'donor_projected' : 'donor',
+    'donor_ch_projected' : 'donor CH',
+    'acceptor_projected' : 'acceptor',
+    'hydrophobe' : 'hydrophobic',
+}
+
+
+def categorise_hotspot_score(score, probe):
+    if probe in output_probe_label:
+        probe = output_probe_label[probe]
+    if score > 17:
+        return f"strong {probe} hotspot"
+    elif score >= 14:
+        return f"moderate {probe} hotspot"
+    else:
+        return f"weak {probe} hotspot"
+
 
 def find_hotspots(file, args, profile=False):
     pdb_id, file_type = file.split(".")
@@ -151,19 +169,24 @@ def find_hotspots(file, args, profile=False):
 
             try:
                 for i in range(num_sites_in_residue):
-                    atom_dict = {'site_id_ref' : single_chain_df.loc[residue, "atom_ID"][i],
-                                'raw_score' : single_chain_df.loc[residue, "score"][i],
-                                'raw_score_unit' : single_chain_df.loc[residue, "type"][i][0],
+                    site_id_ref = single_chain_df.loc[residue, "atom_ID"][i]
+                    raw_score = round(single_chain_df.loc[residue, "score"][i])
+                    raw_score_unit = single_chain_df.loc[residue, "type"][i][0]
+                    atom_dict = {'site_id_ref' : site_id_ref,
+                                'raw_score' : raw_score,
+                                'raw_score_unit' : raw_score_unit,
                                 'confidence_classification' : 'null'
                                 }
                     
-                    site_dict = {'site_id' : single_chain_df.loc[residue, "atom_ID"][i],
-                                'label' : single_chain_df.loc[residue, "type"][i][0]
+                    score_label = categorise_hotspot_score(raw_score, raw_score_unit)
+                    site_dict = {'site_id' : site_id_ref,
+                                'label' : score_label
                                 }
                     
                     residue_dict['site_data'].append(atom_dict)
                     final_dict['sites'].append(site_dict)
             except:
+                raise
                 print(f"Error found for {residue}")
 
             chain_dict['residues'].append(residue_dict)
@@ -201,9 +224,9 @@ if __name__ == '__main__':
                         help='sort all files by size and run smallest first')
     parser.add_argument('--retain', 
                         choices=retainable_files,
-			default=[],
-			nargs='*',
-			help='retain intermediate files')
+                        default=[],
+                        nargs='*',
+                        help='retain intermediate files')
     args = parser.parse_args()
 
     input_dir = WORKING_DIR / args.input_dir  
