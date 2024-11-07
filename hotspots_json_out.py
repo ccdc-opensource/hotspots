@@ -98,8 +98,8 @@ def find_hotspots(file, args, profile=False):
         print(f"Whole calculation process = {t2-t1:.1f} seconds")
 
         # Creates "results/pdb1/out.zip"
-    # with HotspotWriter(out_dir) as writer:
-    #     writer.write(results)
+    with HotspotWriter(out_dir) as writer:
+         writer.write(results)
 
     # print(f"Calculations for {file_ID} saved to {out_dir}")
 

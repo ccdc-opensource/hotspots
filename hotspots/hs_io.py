@@ -343,9 +343,39 @@ class HotspotWriter(Helper):
                 i += 1
             self.pymol_out.commands += PyMOLCommands.group(f'label_{p}_{hr.identifier}', group_me)
 
-        self.pymol_out.commands += PyMOLCommands.group(f"labels_{hr.identifier}", [f'label_{p}_{hr.identifier}'
-                                                                  for p in hr.super_grids.keys()])
 
+        # find contributing residues
+        atom_score_dict = hr.score(hr.protein, as_dict=True)
+        
+        atoms = hr.protein.atoms
+        atom_objects = {}
+        for key, val in atom_score_dict.items():
+            atom = atoms[key]
+            objtype = val[0][0]
+            objname = f"{val[2]}_{val[1]}_{key}"
+            coord = atom.coordinates
+            label = f'"{round(val[3], 1)}"'
+
+            if objtype not in atom_objects:
+                atom_objects[objtype] = []
+
+            atom_objects[objtype].append( (objname, (coord.x,coord.y,coord.z), label) )
+
+        residue_group = []
+        for objtype, data in atom_objects.items():
+            objs = []
+            for x in data:
+                self.pymol_out.commands += PyMOLCommands.pseudoatom(objname=x[0],
+                                                                    coords=x[1],
+                                                                    label=x[2])
+ 
+            name = f'{objtype}'
+            self.pymol_out.commands += PyMOLCommands.group(name, [x[0] for x in data] )
+            residue_group.append(name)
+
+        self.pymol_out.commands += PyMOLCommands.group(f'label_residues_{hr.identifier}', residue_group)
+        self.pymol_out.commands += PyMOLCommands.group(f"labels_{hr.identifier}", [f'label_residues_{hr.identifier}'] + [f'label_{p}_{hr.identifier}'
+                                                                  for p in hr.super_grids.keys()])
         # load up the protein
         if load_prot:
             self.pymol_out.commands += PyMOLCommands.load(f'{relpath}/protein.pdb', f'protein_{hr.identifier}')
@@ -354,8 +384,7 @@ class HotspotWriter(Helper):
             self.pymol_out.commands += PyMOLCommands.show("cartoon", f'protein_{hr.identifier}')
             self.pymol_out.commands += PyMOLCommands.hide("line", f'protein_{hr.identifier}')
             self.pymol_out.commands += PyMOLCommands.show("sticks", "organic")
-
-        # find contributing residues
+        
 
     def compress(self, delete_directory: bool = True) -> None:
         """
