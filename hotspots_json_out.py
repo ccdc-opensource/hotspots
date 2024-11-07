@@ -80,8 +80,8 @@ def find_hotspots(file, args, profile=False):
         print(f"Whole calculation process = {t2-t1:.1f} seconds")
 
         # Creates "results/pdb1/out.zip"
-    # with HotspotWriter(out_dir) as writer:
-    #     writer.write(results)
+    with HotspotWriter(out_dir) as writer:
+         writer.write(results)
 
     # print(f"Calculations for {file_ID} saved to {out_dir}")
 
@@ -201,9 +201,9 @@ if __name__ == '__main__':
                         help='sort all files by size and run smallest first')
     parser.add_argument('--retain', 
                         choices=retainable_files,
-			default=[],
-			nargs='*',
-			help='retain intermediate files')
+            default=[],
+            nargs='*',
+            help='retain intermediate files')
     args = parser.parse_args()
 
     input_dir = WORKING_DIR / args.input_dir  
