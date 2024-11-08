@@ -905,7 +905,10 @@ class FeatureDefinition(Pharmacophore.FeatureDefinition):
         super().__init__(_feature_def=_feature_def)
 
     def detect_features(self, crystal):
-        _csv = ChemistryLib.CrystalStructureView_instantiate(crystal._crystal)
+        try:
+            _csv = ChemistryLib.CrystalStructureView_instantiate(crystal._crystal) # Legacy API SWIG bindings
+        except AttributeError: 
+            _csv = ChemistryLib.CrystalStructureView.instantiate(crystal._crystal) # Newer CSD python API SWIG bindings (from 3.3.1)
         _ssc = MotifPharmacophoreLib.MotifPharmacophoreSearchStructureCreator()
         _ssc.register_components_from_feature_definitions((self._feature_def,))
         _mss = _ssc.search_structure(_csv)
