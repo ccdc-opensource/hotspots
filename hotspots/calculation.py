@@ -25,7 +25,11 @@ import tempfile
 import time
 from functools import reduce
 from os import system, environ
-from os.path import join
+from os.path import join, dirname
+
+ghecom =join(dirname(dirname(__file__)),"win_ghecom/Ghecom.exe")
+if os.path.exists(ghecom) and not 'GHECOM_EXE' in environ:
+    environ['GHECOM_EXE'] = ghecom
 
 import numpy as np
 import pkg_resources
@@ -702,13 +706,11 @@ class Runner(object):
         """
         method = method.lower()
         if method == 'ghecom':
-            if sys.platform == 'linux' or sys.platform == 'linux2':
-                if 'GHECOM_EXE' in environ:
-                    self._buriedness_method = method
-                else:
-                    raise EnvironmentError("Must set Ghecom environment variable")
+
+            if 'GHECOM_EXE' in environ:
+                self._buriedness_method = method
             else:
-                raise OSError('Ghecom is only supported on linux')
+                raise EnvironmentError("Must set Ghecom environment variable to use Ghecom")
 
         elif method == 'ghecom_internal':
             self._buriedness_method = method
@@ -1101,6 +1103,8 @@ class Runner(object):
         protoss = False
 
         tmp = tempfile.mkdtemp()
+        if clear_tmp is False:
+            print("Detailed output written to",tmp)
         # if  protoss is True:
         #     protoss = Protoss(out_dir=tmp)
         #     self.protein = protoss.add_hydrogens(pdb_code).protein
