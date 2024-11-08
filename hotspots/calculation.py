@@ -152,8 +152,6 @@ class ExpBuriedness(object):
 
         scaled_array = resize(out_array, scaled_g.nsteps ,anti_aliasing=False)
 
-
-
         # Future tweaking here
         final_array = scaled_array
         return Grid.array_to_grid(final_array.astype(int), scaled_g)
@@ -789,13 +787,11 @@ class Runner(object):
         """
         method = method.lower()
         if method == 'ghecom':
-            #if sys.platform == 'linux' or sys.platform == 'linux2':
-                if 'GHECOM_EXE' in environ:
-                    self._buriedness_method = method
-                else:
-                    raise EnvironmentError("Must set Ghecom environment variable")
-            #else:
-            #    raise OSError('Ghecom is only supported on linux')
+
+            if 'GHECOM_EXE' in environ:
+                self._buriedness_method = method
+            else:
+                raise EnvironmentError("Must set Ghecom environment variable to use Ghecom")
 
         elif method == 'ghecom_internal':
             self._buriedness_method = method
