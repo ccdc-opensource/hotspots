@@ -915,16 +915,23 @@ class Runner(object):
         if self.buriedness_method.lower() == 'ghecom' and self.buriedness is None:
             print("    method: Ghecom")
             out_grid = self.superstar_grids[0].buriedness.copy_and_clear()
+            
+            cavity_file = "ghecom_out.pdb"
+            if self.pdb_id:
+                cavity_file = f"{self.pdb_id}_{cavity_file}"
+            if self.output_path:
+                cavity_file = os.path.join(self.output_path, cavity_file)
 
             ghecom = Ghecom()
-            path = ghecom.run(self.protein)
+            
+            path = cavity_file if self.save_cavity and os.path.isfile(cavity_file) else None
+            if not path:
+                path = ghecom.run(self.protein)
+                if self.save_cavity:
+                    shutil.copy2(path, cavity_file)
+            else:
+                print(f"    reusing cavity file: {path}")
 
-            if self.save_cavity and self.output_path:
-                cfile = os.path.basename(path)
-                if self.pdb_id:
-                    cfile = f"{self.pdb_id}_{cfile}"
-                cavity_copy = os.path.join(self.output_path, cfile)
-                shutil.copy2(path, cavity_copy)
 
             t_p2g = perf_counter()
             self.buriedness = ghecom.pdb_to_grid(path, out_grid)
