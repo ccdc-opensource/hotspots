@@ -18,7 +18,7 @@ output_probe_label = {
     'donor_projected' : 'donor',
     'donor_ch_projected' : 'donor CH',
     'acceptor_projected' : 'acceptor',
-    'hydrophobe' : 'hydrophobic',
+    'hydrophobe' : 'hydrophobe',
 }
 
 
@@ -26,11 +26,11 @@ def categorise_hotspot_score(score, probe):
     if probe in output_probe_label:
         probe = output_probe_label[probe]
     if score > 17:
-        return f"strong {probe} hotspot"
+        return f"strong {probe}"
     elif score >= 14:
-        return f"moderate {probe} hotspot"
+        return f"moderate {probe}"
     else:
-        return f"weak {probe} hotspot"
+        return f"weak {probe}"
 
 
 def find_hotspots(file, args, profile=False):
