@@ -17,7 +17,14 @@ from os.path import exists, join, abspath
 
 # import matplotlib as mpl
 # mpl.use('TkAgg')
-import matplotlib.pyplot as plt
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    import sys
+    sys.stderr.write("Matplotlib import failed: probably due to incompatibilities. Plotting utilities will not work")
+    plt = None
+
 
 import numpy as np
 
@@ -153,21 +160,26 @@ class Helper(object):
         :return `ccdc.molecule.Molecule`: pseduomolecule which contains score labels
         """
         min_size_dict = {"apolar": 40,
-                         "donor": 15,
-                         "acceptor": 15,
-                         "negative": 15,
-                         "positive": 15}
+                         "donor": 6,
+                         "acceptor": 9,
+                         "negative": 9,
+                         "positive": 9}
 
         atom_dic = {"apolar": 'C',
+                    "aromatic": 'C',
                     "donor": 'N',
+                    "weak_donor": 'N',
                     "acceptor": 'O',
+                    "weak_acceptor": 'O',
                     "negative": 'S',
-                    "positive": 'H'}
+                    "positve": 'H'
+                    #"surface": ''
+                    }
 
         try:
-            interaction_types = [atom_dic[feat.feature_type] for feat in input._features]
-            coordinates = [feat.feature_coordinates for feat in input._features]
-            scores = [feat.score_value for feat in input._features]
+            interaction_types = [atom_dic[feat.feature_type] for feat in input._features if feat.feature_type != "surface"]
+            coordinates = [feat.feature_coordinates for feat in input._features if feat.feature_type != "surface"]
+            scores = [feat.score_value for feat in input._features if feat.feature_type != "surface"]
 
         except AttributeError:
 
@@ -208,16 +220,16 @@ class Helper(object):
         :param atom:
         :return:
         """
-        if atom.is_donor and \
-                atom.atomic_symbol == 'N' and \
-                len([a for a in atom.neighbours if a.atomic_symbol == 'H']) >= 2:
+        # if atom.is_donor and \
+        #         atom.atomic_symbol == 'N' and \
+        #         len([a for a in atom.neighbours if a.atomic_symbol == 'H']) >= 2:
+        #     return "donor"
+        # if atom.is_donor and atom.is_acceptor:
+        #     return "doneptor"
+        if atom.is_donor:
             return "donor"
-        elif atom.is_donor and atom.is_acceptor:
-            return "doneptor"
-        elif atom.is_acceptor:
+        if atom.is_acceptor:
             return "acceptor"
-        elif atom.is_donor:
-            return "donor"
         else:
             return "apolar"
 

@@ -1,6 +1,29 @@
 from os.path import join
 
 
+def pharmacophore_fitting_pt(p, x, y, z, weight, radius=2.0, score=0.001):
+    int_dict = {"donor": "DON",
+                "acceptor": "ACC"}
+    return f"""constraint pharmacophore {int_dict[p]} BLOCK {x} {y} {z} 1 {radius} {score} {weight}\n"""
+
+
+def apolar_fitting_pnt(idx, x, y, z, weight):
+    return f"""      {idx} ****        {x:.4f}   {y:.4f}  {z:.4f} Du {weight:.3f}  \n"""
+
+
+def fitting_pts_header(low, high, identifier, count):
+    return f"""
+@<TRIPOS>MOLECULE
+GA Fitting Points FHM_scheme: {identifier} range: {low} - {high}
+  {count}    0    0
+SMALL
+NO_CHARGES
+
+
+@<TRIPOS>ATOM
+    """
+
+
 def crossminer_features():
     """"""
     return {"ring": "apolar",
@@ -98,6 +121,7 @@ def pymol_imports():
 from os.path import join
 import tempfile
 import zipfile
+import math
 from pymol import cmd, finish_launching
 from pymol.cgo import *
 
@@ -108,6 +132,35 @@ dirpath = None
 
     return out_str
 
+
+def load_bfactors():
+    out_str ="""
+def loadBfacts(mol, startaa=1, source="newBfactors.txt", visual="Y"):
+    obj = cmd.get_object_list(mol)[0]
+    cmd.alter(mol, "b=-1.0")
+    inFile = open(source, 'r')
+    counter = int(startaa)
+    bfacts = []
+    for line in inFile.readlines():
+        bfact = float(line)
+        bfacts.append(bfact)
+        cmd.alter("%s and resi %s and n. CA" % (mol, counter), "b=%s" % bfact)
+        counter = counter + 1
+    if visual == "Y":
+        cmd.show_as("cartoon", mol)
+        cmd.cartoon("putty", mol)
+        cmd.set("cartoon_putty_scale_min", min(bfacts), obj)
+        cmd.set("cartoon_putty_scale_max", max(bfacts), obj)
+        cmd.set("cartoon_putty_transform", 0, obj)
+        cmd.set("cartoon_putty_radius", 0.25, obj)
+        cmd.spectrum("b", "rainbow", "%s and n. CA " % mol)
+        cmd.ramp_new("count", obj, [min(bfacts), max(bfacts)], "rainbow")
+        cmd.recolor()
+
+
+cmd.extend("loadBfacts", loadBfacts);
+"""
+    return out_str
 
 def pymol_arrow():
     out_str = """
@@ -146,9 +199,10 @@ def cgo_arrow(atom1='pk1', atom2='pk2', radius=0.07, gap=0.0, hlength=-1, hradiu
 
     xyz3 = cpv.add(cpv.scale(normal, hlength), xyz2)
 
-    obj = [cgo.CYLINDER] + xyz1 + xyz3 + [radius] + color1 + color2 + \
-          [cgo.CONE] + xyz3 + xyz2 + [hradius, 0.0] + color2 + color2 + \
+    obj = [CYLINDER] + xyz1 + xyz3 + [radius] + color1 + color2 + \
+          [CONE] + xyz3 + xyz2 + [hradius, 0.0] + color2 + color2 + \
           [1.0, 0.0]
+    print(obj)
     return obj
 
     """
@@ -162,27 +216,26 @@ zip_dir = '{0}.zip'
 with zipfile.ZipFile(zip_dir) as hs_zip:
     hs_zip.extractall(dirpath)
 """.format(zip_dir)
-
     return out_str
 
-def pymol_protein(settings, zip_results):
+def pymol_protein(zip_results, prot="protein.pdb"):
     if zip_results:
         out_str = """
-cmd.load(join(dirpath,"protein.pdb"), "protein")
-cmd.show("cartoon", "protein")
-"""
+cmd.load(join(dirpath,"{0}"), "{1}")
+cmd.show("cartoon", "{1}")
+""".format(prot, prot.split(".")[0])
     else:
         out_str = """
-cmd.load("protein.pdb", "protein")
-cmd.show("cartoon", "protein")
-"""
-    if settings.surface:
-        out_str += """
-cmd.set("surface_cavity_mode", 1)
-cmd.show("surface", "protein")
-cmd.set("surface_trim_factor", {})
-cmd.set('transparency', 0.5, "protein")
-    """.format(settings.surface_trim_factor)
+cmd.load("{0}", "{1}")
+cmd.show("cartoon", "{1}")
+""".format(prot, prot.split(".")[0])
+#     if settings.surface:
+#         out_str += """
+# cmd.set("surface_cavity_mode", 1)
+# cmd.show("surface", "{0}")
+# cmd.set("surface_trim_factor", {1})
+# cmd.set('transparency', 0.5, "protein")
+#     """.format(prot.split(".")[0], settings.surface_trim_factor)
 
     return out_str
 
@@ -209,7 +262,7 @@ def pymol_grids(i, settings):
     threshold = settings.isosurface_threshold
 
     if i is not None:
-        gfiles = ["{}/{}{}".format(i,p,settings.grid_extension) for p in grids]
+        gfiles = ["{0}/{1}_{0}{2}".format(i,p,settings.grid_extension) for p in grids]
     else:
         gfiles = ["{}{}".format(p,settings.grid_extension) for p in grids]
         i = 0
@@ -220,7 +273,7 @@ colour_dict = {{'acceptor':'red', 'donor':'blue', 'apolar':'yellow', 'negative':
 threshold_list = {0}
 gfiles = {1}
 grids = {2}
-num = {3}
+num = '{3}'
 surf_transparency = {4}
 
 if dirpath:
@@ -233,15 +286,15 @@ for t in threshold_list:
             cmd.isosurface('surface_%s_%s_%s'%(grids[i], t, num), '%s_%s'%(grids[i], num), t)
             cmd.set('transparency', surf_transparency, 'surface_%s_%s_%s'%(grids[i], t, num))
             cmd.color(colour_dict['%s'%(grids[i])], 'surface_%s_%s_%s'%(grids[i], t, num))
-            cmd.group('threshold_%s'%(t), members = 'surface_%s_%s_%s'%(grids[i],t, num))
-            cmd.group('threshold_%s' % (t), members='label_threshold_%s' % (t))
+            cmd.group('threshold_%s_%s' % (t, num), members = 'surface_%s_%s_%s'%(grids[i],t, num))
+            cmd.group('threshold_%s_%s' % (t, num), members='label_threshold_%s_%s' % (t, num))
         except:
             continue
 
 
 
     try:
-        cmd.group('hotspot_%s' % (num), members='threshold_%s' % (t))
+        cmd.group('hotspot_%s' % (num), members='threshold_%s_%s' % (t, num))
     except:
         continue
     
@@ -257,6 +310,47 @@ for t in threshold_list:
 
     return out_str
 
+def pymol_sphere(objname, rgba, coords, radius=1):
+    return \
+f'\nobj_{objname} =' \
+f'[COLOR, {rgba[0]}, {rgba[1]}, {rgba[2]}] + ' \
+f' [ALPHA, {rgba[3]}] +' \
+f' [SPHERE, float({coords[0]}), float({coords[1]}), float({coords[2]}), float({radius})]'\
+f'\ncmd.load_cgo(obj_{objname}, "{objname}", 1)'
+
+def pymol_pseudoatom(objname, coords, color=(1,1,1)):
+    return f'\ncmd.pseudoatom(object="{objname}", pos={coords}, color={color})\n'
+
+def pymol_line(objname, pt1, pt2, rgb=(1,1,1), width=4.0):
+    pymol_out = pymol_pseudoatom(f"{objname}pa1", pt1)
+    pymol_out += pymol_pseudoatom(f"{objname}pa2", pt2)
+    pymol_out += \
+f'\ncmd.distance(name="{objname}", selection1="{objname}pa1", selection2="{objname}pa2", width=0.5, gap=0.2, label=0, state=1)\n' \
+f'\ncmd.set("dash_color", {(rgb[0], rgb[1], rgb[2])}, selection="{objname}")' \
+f'\ncmd.set("dash_width", {width})' \
+f'\ncmd.delete("{objname}pa1")' \
+f'\ncmd.delete("{objname}pa2")'
+    return pymol_out
+
+def pymol_isosurface(fname, level, color):
+    grd_name = fname.split(".")[0]
+    isosurface_name = f"surface_{grd_name}"
+    pymol_out = f'\ncmd.load("{fname}", "{grd_name}", state=1)'
+    pymol_out += f'\ncmd.isosurface(name="{isosurface_name}", map="{grd_name}", level="{level}")\n'
+    pymol_out += f'\ncmd.color("{color}", "{isosurface_name}")'
+    return pymol_out
+
+def pymol_load(fname):
+    return f'\ncmd.load("{fname}", "{fname.split(".")[0]}")'
+
+def pymol_group(group_name, members):
+    pymol_out = ""
+    for member in members:
+        pymol_out += f'\ncmd.group("{group_name}", members="{member}")'
+    return pymol_out
+
+def pymol_set_color(objname, rgb):
+    return f'\ncmd.set_color("{objname}", {(rgb[0], rgb[1], rgb[2])})'
 
 def pymol_mesh(i):
     fname = join(str(i), "mesh.grd")

@@ -14,10 +14,10 @@ import glob
 import subprocess
 import sys
 import tempfile
-from os import environ, mkdir
+from os import environ, mkdir, getenv
 from os.path import join, exists, isfile, dirname
 
-from ccdc.io import csd_directory, MoleculeWriter
+from ccdc.io import csd_directory, csd_version, MoleculeWriter
 from ccdc.utilities import PushDir
 from concurrent import futures
 
@@ -69,9 +69,9 @@ class _AtomicHotspot(object):
             self.minpropensity = min_propensity
             self.superstar_sigma = superstar_sigma
             self.superstar_executable, self.superstar_env = self._set_environment_variables()
-            self.temp_dir = tempfile.mkdtemp()
             self._csd_atomic_probes = {}
             self._pdb_atomic_probes = {}
+            self.temp_dir = tempfile.mkdtemp(prefix=getenv('TMPDIR_PREFIX', None))
 
         @staticmethod
         def _set_environment_variables():
@@ -82,6 +82,13 @@ class _AtomicHotspot(object):
             :return: superstar executable (str), superstar env(str)
             """
             base = csd_directory()
+            isostar_files = str(join(base, 'isostar_files', 'istr'))
+            
+
+            if int(csd_version()) > 543:
+                base = join(dirname(dirname(csd_directory())), "ccdc-software/mercury")
+                isostar_files = join(dirname(csd_directory()), "isostar/istr")
+
             main_dir = environ.get('MAINDIR')
             if main_dir:
                 if sys.platform == 'win32':
@@ -93,6 +100,7 @@ class _AtomicHotspot(object):
                 if sys.platform == 'win32':
                     base = dirname(base)
                     merc = glob.glob(join(base, 'mercury*'))
+                    print(merc)
                     if type(merc) is list:
                         try:
                             merc = merc[0]
@@ -105,12 +113,20 @@ class _AtomicHotspot(object):
                         if not isfile(superstar_executable):
                             raise IOError("superstar executable not found")
 
-                    superstar_env = dict(SUPERSTAR_ISODIR=str(join(base, 'isostar_files', 'istr')),
+                    superstar_env = dict(SUPERSTAR_ISODIR = isostar_files,
                                          SUPERSTAR_ROOT=str(join(base, "Mercury"))
                                          )
 
                 elif sys.platform == 'darwin':
-                    print("OS X not supported")
+                    base = dirname(base)
+                    print(base)
+                    superstar_executable = join('/Applications', 'CCDC', 'CSD_2021', 'mercury.app', 'Contents', 'MacOS',
+                                                'superstar.x')
+                    superstar_env = dict(SUPERSTAR_ISODIR=str(
+                        join('/Applications', 'CCDC', 'CSD_2021', 'DATA', 'isostar_files', 'istr')),
+                                         SUPERSTAR_ROOT=join('/Applications', 'CCDC', 'Discovery_2021', 'SuperStar',
+                                                             'Resources')
+                                         )
 
                 else:
                     base = dirname(base)
@@ -225,7 +241,7 @@ class _AtomicHotspot(object):
             out = self.settings.temp_dir
 
         with PushDir(out):
-            with MoleculeWriter(join(out, 'protein.pdb')) as writer:
+            with MoleculeWriter(join(out, 'protein.mol2')) as writer:
                 writer.write(protein)
 
         for jobname, probename in self.settings.atomic_probes.items():
@@ -477,7 +493,7 @@ PEAK_FITTING 0
 PEAK_FITTING_NCYCLES 1
 MIN_PEAK_HEIGHT 0
 PEAK_FITTING_REFINE 0
-MOLECULE_FILE protein.pdb
+MOLECULE_FILE protein.mol2
 CAVITY_DETECTION 1
 MIN_PSP 5
 SAVE_CAVITY MESH

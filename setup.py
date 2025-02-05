@@ -12,9 +12,11 @@ def read_file(filename):
 setup(
     name="hotspots",
     author="Chris Radoux, Peter Curran, Mihaela Smilova",
-    author_email="pcurran@ccdc.cam.ac.uk",
+    author_email="current.address@unknown.invalid",
+    maintainer="David Lowe",
+    maintainer_email="dlowe@ccdc.cam.ac.uk",
     license="MIT",
-    version="1.0.3",
+    version="1.0.6",
     url="https://github.com/prcurran/hotspots",
     packages=find_packages(),
     include_package_data=True,
@@ -23,15 +25,15 @@ setup(
     long_description_content_type='text/markdown',
     # Project uses reStructuredText, so ensure that the docutils get
     # installed or upgraded on the target machine
-    install_requires=['numpy',
+    install_requires=['numpy', # Custom install with CSD Python API
                       'csd-python-api>=2.0.0',
-                      'matplotlib',
-                      'scipy',
-                      'sklearn',
-                      'scikit-image',
-                      'hdbscan',
-                      'pandas',
-                      'futures',
+                      'matplotlib', # Custom install with CSD Python API
+                      'scipy', # Custom install with CSD Python API
+                      'scikit-learn>=0',
+                      'scikit-image>=0.17.2',
+                      'hdbscan>=0.8.26',
+                      'pandas', # Custom install with CSD Python API
+                      # 'futures >=3.1.1',
                       'tqdm==4.31.1',
                       'xmltodict==0.12.0'],
     package_data={

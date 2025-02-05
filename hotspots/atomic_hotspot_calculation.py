@@ -14,10 +14,10 @@ import glob
 import subprocess
 import sys
 import tempfile
-from os import environ, mkdir
+from os import environ, mkdir, getenv
 from os.path import join, exists, isfile, dirname
 
-from ccdc.io import csd_directory, MoleculeWriter
+from ccdc.io import csd_directory, csd_version, MoleculeWriter
 from ccdc.utilities import PushDir
 from concurrent import futures
 
@@ -36,7 +36,7 @@ def _run_job(args):
     :return: tup, temporary directory and jobname
     """
     cmd, jobname, superstar_env, temp_dir = args
-    print(temp_dir)
+    # print(temp_dir)
     env = environ.copy()
     env.update(superstar_env)
     with PushDir(temp_dir):
@@ -69,9 +69,10 @@ class _AtomicHotspot(object):
             self.minpropensity = min_propensity
             self.superstar_sigma = superstar_sigma
             self.superstar_executable, self.superstar_env = self._set_environment_variables()
-            self.temp_dir = tempfile.mkdtemp()
             self._csd_atomic_probes = {}
             self._pdb_atomic_probes = {}
+            self.temp_dir = tempfile.mkdtemp(
+                prefix=getenv('TMPDIR_PREFIX', None))
 
         @staticmethod
         def _set_environment_variables():
@@ -82,22 +83,37 @@ class _AtomicHotspot(object):
             :return: superstar executable (str), superstar env(str)
             """
             base = csd_directory()
+            superstar_root = str(base)
+            isostar_files = str(join(base, 'isostar_files', 'istr'))
+            superstar_executable = join(base, 'bin', 'superstar')
+
+            if int(csd_version()) > 543:
+                base = join(dirname(dirname(csd_directory())),
+                            "ccdc-software/mercury")
+                superstar_root = join(dirname(base), 'superstar')
+                isostar_files = join(dirname(csd_directory()), "isostar/istr")
+                superstar_executable = join(superstar_root, 'bin', 'superstar')
+
             main_dir = environ.get('MAINDIR')
+            # print(main_dir)
             if main_dir:
                 if sys.platform == 'win32':
                     superstar_executable = 'superstar_app.exe'
                 else:
-                    superstar_executable = ' '.join([join(environ['MAINDIR'], 'run.sh'), 'superstar_app.x'])
+                    superstar_executable = ' '.join(
+                        [join(environ['MAINDIR'], 'run.sh'), 'superstar_app.x'])
                 superstar_env = dict()
             else:
                 if sys.platform == 'win32':
                     base = dirname(base)
                     merc = glob.glob(join(base, 'mercury*'))
+                    # print(merc)
                     if type(merc) is list:
                         try:
                             merc = merc[0]
                         except IndexError:
-                            raise IndexError("No mercury path found, check API version")
+                            raise IndexError(
+                                "No mercury path found, check API version")
 
                     superstar_executable = join(merc, 'superstar_app.exe')
                     if not isfile(superstar_executable):
@@ -105,20 +121,34 @@ class _AtomicHotspot(object):
                         if not isfile(superstar_executable):
                             raise IOError("superstar executable not found")
 
-                    superstar_env = dict(SUPERSTAR_ISODIR=str(join(base, 'isostar_files', 'istr')),
-                                         SUPERSTAR_ROOT=str(join(base, "Mercury"))
+                    superstar_env = dict(SUPERSTAR_ISODIR=isostar_files,
+                                         SUPERSTAR_ROOT=str(
+                                             join(base, "Mercury"))
                                          )
 
                 elif sys.platform == 'darwin':
-                    print("OS X not supported")
+                    base = dirname(base)
+                    print(base)
+                    superstar_executable = join('/Applications', 'CCDC', 'CSD_2021', 'mercury.app', 'Contents', 'MacOS',
+                                                'superstar.x')
+                    superstar_env = dict(SUPERSTAR_ISODIR=str(
+                        join('/Applications', 'CCDC', 'CSD_2021', 'DATA', 'isostar_files', 'istr')),
+                        SUPERSTAR_ROOT=join('/Applications', 'CCDC', 'Discovery_2021', 'SuperStar',
+                                                             'Resources')
+                    )
 
                 else:
-                    base = dirname(base)
-                    superstar_executable = join(base, 'bin', 'superstar')
-                    superstar_env = dict(SUPERSTAR_ISODIR=str(join(base, 'isostar_files', 'istr')),
-                                         SUPERSTAR_ROOT=str(base)
+                    # base = dirname(base)
+                    # superstar_executable = join(base, 'bin', 'superstar')
+                    superstar_executable = superstar_executable
+                    superstar_env = dict(SUPERSTAR_ISODIR=isostar_files,
+                                         SUPERSTAR_ROOT=superstar_root
                                          )
 
+            # print(f"Base: {base}")
+            # print(f"superstar_root: {superstar_root}")
+            # print(f"superstar_executable: {superstar_executable}")
+            # print(f"superstar_env: {superstar_env}")
             return superstar_executable, superstar_env
 
         @property
@@ -188,8 +218,10 @@ class _AtomicHotspot(object):
             self.ins_str = _atomic_hotspot_ins(jobname, probename, settings)
             if cavity:
                 self.ins_str += '\nCAVITY_ORIGIN {} {} {}'.format(round(cavity[0], 1),
-                                                                  round(cavity[1], 1),
-                                                                  round(cavity[2], 1)
+                                                                  round(
+                                                                      cavity[1], 1),
+                                                                  round(
+                                                                      cavity[2], 1)
                                                                   )
             else:
                 self.ins_str += '\nSUBSTRUCTURE ALL'
@@ -225,7 +257,7 @@ class _AtomicHotspot(object):
             out = self.settings.temp_dir
 
         with PushDir(out):
-            with MoleculeWriter(join(out, 'protein.pdb')) as writer:
+            with MoleculeWriter(join(out, 'protein.mol2')) as writer:
                 writer.write(protein)
 
         for jobname, probename in self.settings.atomic_probes.items():
@@ -241,6 +273,7 @@ class _AtomicHotspot(object):
 
             with PushDir(out):
                 instruction.write("{}.ins".format(jobname))
+        # print(f"Command = {cmds}")
         return cmds
 
     @staticmethod
@@ -261,16 +294,18 @@ class _AtomicHotspot(object):
 
         merged_results = []
         for identifier, atomic_results in result_dict.items():
-            g_dict = {"grid_{}".format(i): g.grid for i, g in enumerate(atomic_results)}
+            g_dict = {"grid_{}".format(
+                i): g.grid for i, g in enumerate(atomic_results)}
             g = Grid.get_single_grid(g_dict, mask=False)
 
-            b_dict = {"buriedness_{}".format(i): g.buriedness for i, g in enumerate(atomic_results)}
+            b_dict = {"buriedness_{}".format(
+                i): g.buriedness for i, g in enumerate(atomic_results)}
             b = Grid.get_single_grid(b_dict, mask=False)
 
             merged_results.append(_AtomicHotspotResult(identifier=identifier,
-                                                      grid=g,
-                                                      buriedness=b,
-                                                      )
+                                                       grid=g,
+                                                       buriedness=b,
+                                                       )
                                   )
 
         return merged_results
@@ -307,14 +342,17 @@ class _AtomicHotspot(object):
         [_AtomicHotspotResult(donor), _AtomicHotspotResult(apolar), _AtomicHotspotResult(acceptor)]
 
         """
+
         self._merge = False
         if cavity_origins:
             if len(cavity_origins) > 1:
                 self._merge = True
             temp_dirs = []
             cmds = []
-            env_str = [self.settings.superstar_env] * len(self.settings.atomic_probes) * len(cavity_origins)
-            jobnames = list(self.settings.atomic_probes.keys()) * len(cavity_origins)
+            env_str = [self.settings.superstar_env] * \
+                len(self.settings.atomic_probes) * len(cavity_origins)
+            jobnames = list(self.settings.atomic_probes.keys()
+                            ) * len(cavity_origins)
 
             for i, cavity_origin in enumerate(cavity_origins):
                 out = (join(self.settings.temp_dir, str(i)))
@@ -327,24 +365,29 @@ class _AtomicHotspot(object):
                 cmds.extend(self._get_cmd(protein, cavity_origin, out=out))
 
         else:
-            temp_dirs = [self.settings.temp_dir] * len(self.settings.atomic_probes)
-            env_str = [self.settings.superstar_env] * len(self.settings.atomic_probes)
+            temp_dirs = [self.settings.temp_dir] * \
+                len(self.settings.atomic_probes)
+            env_str = [self.settings.superstar_env] * \
+                len(self.settings.atomic_probes)
             jobnames = self.settings.atomic_probes.keys()
             cmds = self._get_cmd(protein, cavity_origins)
 
         inputs = zip(cmds, jobnames, env_str, temp_dirs)
 
         results = []
+        print("starting MP")
         if nthreads:
             with futures.ProcessPoolExecutor(max_workers=nthreads) as executor:
                 for t, j in executor.map(_run_job, inputs):
-                    results.append(_AtomicHotspotResult.find(temp_dir=t, jobname=j))
+                    results.append(_AtomicHotspotResult.find(
+                        temp_dir=t, jobname=j))
 
         else:
             for input in inputs:
                 t, j = _run_job(input)
-                results.append(_AtomicHotspotResult.find(temp_dir=t, jobname=j))
-
+                results.append(_AtomicHotspotResult.find(
+                    temp_dir=t, jobname=j))
+        print("completed MP")
         if self._merge is True:
             results = self._merge_cavities(results)
 
@@ -397,7 +440,8 @@ class _AtomicHotspotResult(object):
         if isinstance(g, Grid):
             self._grid = g
         else:
-            raise IOError("Must supply a hotspots.grid_extension.Grid class instance")
+            raise IOError(
+                "Must supply a hotspots.grid_extension.Grid class instance")
 
     @property
     def buriedness(self):
@@ -428,13 +472,15 @@ class _AtomicHotspotResult(object):
 
         else:
             print(buriedness_path)
-            raise AttributeError('{} ligsite grid could not be found'.format(jobname))
+            raise AttributeError(
+                '{} ligsite grid could not be found'.format(jobname))
 
         return _AtomicHotspotResult(identifier=jobname,
-                                   grid=grid,
-                                   buriedness=buriedness,
-                                   ins=join(temp_dir, "{}.ins".format(jobname))
-                                   )
+                                    grid=grid,
+                                    buriedness=buriedness,
+                                    ins=join(
+                                        temp_dir, "{}.ins".format(jobname))
+                                    )
 
     @staticmethod
     def _correct_ligsite(g, l):
@@ -477,7 +523,7 @@ PEAK_FITTING 0
 PEAK_FITTING_NCYCLES 1
 MIN_PEAK_HEIGHT 0
 PEAK_FITTING_REFINE 0
-MOLECULE_FILE protein.pdb
+MOLECULE_FILE protein.mol2
 CAVITY_DETECTION 1
 MIN_PSP 5
 SAVE_CAVITY MESH
