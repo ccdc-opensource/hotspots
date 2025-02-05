@@ -1,9 +1,11 @@
 Metadata-Version: 2.1
 Name: hotspots
-Version: 1.0.3
+Version: 1.0.6
 Home-page: https://github.com/prcurran/hotspots
 Author: Chris Radoux, Peter Curran, Mihaela Smilova
-Author-email: pcurran@ccdc.cam.ac.uk
+Author-email: current.address@unknown.invalid
+Maintainer: David Lowe
+Maintainer-email: dlowe@ccdc.cam.ac.uk
 License: MIT
 Description-Content-Type: text/markdown
 License-File: LICENSE
@@ -30,6 +32,8 @@ For more information on this method:
 
 Getting Started
 ===============
+
+## See "instructions.txt" for up-to-date advice for using this package.
 
 Although the Hotspots API is publicly available, it is dependant on the CSD
 Python API - a commercial package.
