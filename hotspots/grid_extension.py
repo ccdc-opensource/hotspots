@@ -653,7 +653,7 @@ class Grid(utilities.Grid):
             for j in range(ny):
                 for k in range(nz):
                     scores[i, j, k, 0] += self.value(i, j, k)
-        smoothed = ndimage.filters.gaussian_filter(scores, sigma=s)
+        smoothed = ndimage.gaussian_filter(scores, sigma=s)
         grid = self.copy_and_clear()
         for i in range(nx):
             for j in range(ny):

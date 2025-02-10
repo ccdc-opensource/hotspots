@@ -14,9 +14,36 @@ import argparse
 WORKING_DIR = Path(__file__).parent.resolve()
 NUM_ROTS = 3000
 
+output_probe_label = {
+    'donor_projected' : 'donor',
+    'donor_ch_projected' : 'donor CH',
+    'acceptor_projected' : 'acceptor',
+    'hydrophobe' : 'hydrophobe',
+}
+
+
+def categorise_hotspot_score(score, probe):
+    if probe in output_probe_label:
+        probe = output_probe_label[probe]
+    if score > 17:
+        return f"strong {probe}"
+    elif score >= 14:
+        return f"moderate {probe}"
+    else:
+        return f"weak {probe}"
+
 
 def find_hotspots(file, args, profile=False):
     pdb_id, file_type = file.split(".")
+    
+    out_dir = f"{args.input_dir}/results/{NUM_ROTS}/{pdb_id}_{file_type}"
+
+    if not os.path.exists(f"{args.input_dir}/results"):
+        os.mkdir(f"{args.input_dir}/results")
+    if not os.path.exists(f"{args.input_dir}/results/{NUM_ROTS}"):
+        os.mkdir(f"{args.input_dir}/results/{NUM_ROTS}")
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
 
     timings = {"pdb_id": pdb_id,
                "file_type": file_type}
@@ -33,25 +60,34 @@ def find_hotspots(file, args, profile=False):
     for l in prot.ligands:
         prot.remove_ligand(l.identifier)
 
-    # save and re-loading the protein was required at one point. It seems to give very similar results without it now, but I want to investigate further before removing it
-    with MoleculeWriter(f"edit_prot.mol2") as w:
-        w.write(prot)
-    prot = Protein.from_file(f"edit_prot.mol2")
+    # Create lookup dictionaries of chain and residue IDs
+    chain_id_lookup = {}
+    residue_id_lookup = {}
+    for c in prot.chains:
+       chain_id_lookup[c.identifier] = c.author_identifier
+       residue_id_lookup[c.identifier] = {}
+       for r in c.residues:
+           # residue identifier is returned as "C:RES123" where "C" is chain ID
+           rid = r.identifier.split(":")[-1]
+           rid_author = r.author_identifier.split(":")[-1]
+           residue_id_lookup[c.identifier][rid] = rid_author
 
     t1 = perf_counter()
     timings['pre-processing'] = t1-t0
     if profile == True:
         print(f"Pre-processing protein = {t1-t0:.2f} seconds")
         
-    runner = Runner()
-    settings = Runner.Settings()
+    save_cavity = "cavity" in args.retain
     
+    runner = Runner(pdb_id=pdb_id, output_path=out_dir, save_cavity=save_cavity)
+
+    settings = Runner.Settings()
     settings.nrotations = NUM_ROTS
    
     # Only SuperStar jobs are parallelised (one job per processor). By default there are 3 jobs, when calculating charged interactions there are 5.
     print("file_ID =", pdb_id)
     results = runner.from_protein(prot,
-                                  nprocesses=3,
+                                  nprocesses=1,
                                   charged_probes=False,
                                   buriedness_method='ghecom',
                                   settings=settings)
@@ -60,18 +96,10 @@ def find_hotspots(file, args, profile=False):
     timings['calculation'] = t2-t1
     if profile:
         print(f"Whole calculation process = {t2-t1:.1f} seconds")
-    out_dir = f"{args.input_dir}/results/{NUM_ROTS}/{pdb_id}_{file_type}"
-
-    if not os.path.exists(f"{args.input_dir}/results"):
-        os.mkdir(f"{args.input_dir}/results")
-    if not os.path.exists(f"{args.input_dir}/results/{NUM_ROTS}"):
-        os.mkdir(f"{args.input_dir}/results/{NUM_ROTS}")
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
 
         # Creates "results/pdb1/out.zip"
-    # with HotspotWriter(out_dir) as writer:
-    #     writer.write(results)
+    with HotspotWriter(out_dir) as writer:
+         writer.write(results)
 
     # print(f"Calculations for {file_ID} saved to {out_dir}")
 
@@ -102,10 +130,9 @@ def find_hotspots(file, args, profile=False):
         "data_resource": "CSD/Fragment Hotspots",
         "resource_version": "CSD v5.45",
         "software_version": "Hotspots v1.06",
-        "resource_entry_url": "https://github.com/ccdc-opensource/hotspots",
+        "resource_entry_url": "https://www.ccdc.cam.ac.uk/open-source-products/fragment-hotspots/",
         "release_date": "20/02/2024",
         "pdb_id": pdb_id,
-        "filetype": file_type,
         "chains": [],
         "sites" : [],
         "evidence_code_ontology": [
@@ -119,17 +146,20 @@ def find_hotspots(file, args, profile=False):
     for chain, single_chain_df in df.groupby(level=0):
         single_chain_df = single_chain_df.droplevel(0)
         
-        chain_dict = {'chain_label' : chain,
-                    'additional_chain_annotations' : {},
+        author_chain = chain_id_lookup[chain]
+        chain_dict = {'chain_label' : author_chain,
                     'residues' : []
                     }
         
         for residue in single_chain_df.index:
             residue_dict = {}
+            if residue not in residue_id_lookup[chain]:
+                print(f"WARNING: Skipping residue {residue} reported by hotspots as not in lookup table for {chain}")
+                continue
+            author_residue = residue_id_lookup[chain][residue]
             try:
-                residue_dict = {'pdb_res_label' : re.findall("\d+", residue)[0],
-                                'aa_type' : re.findall("[A-Z]+", residue)[0],
-                            'additional_residue_annotations' : {},
+                residue_dict = {'pdb_res_label' : re.findall("\d+", author_residue)[0],
+                                'aa_type' : re.findall("[A-Z]+", author_residue)[0],
                             'site_data' : []
                             }
             except:
@@ -139,19 +169,24 @@ def find_hotspots(file, args, profile=False):
 
             try:
                 for i in range(num_sites_in_residue):
-                    atom_dict = {'site_id_ref' : single_chain_df.loc[residue, "atom_ID"][i],
-                                'raw_score' : single_chain_df.loc[residue, "score"][i],
-                                'raw_score_unit' : single_chain_df.loc[residue, "type"][i][0],
+                    site_id_ref = single_chain_df.loc[residue, "atom_ID"][i]
+                    raw_score = round(single_chain_df.loc[residue, "score"][i])
+                    raw_score_unit = single_chain_df.loc[residue, "type"][i][0]
+                    atom_dict = {'site_id_ref' : site_id_ref,
+                                'raw_score' : raw_score,
+                                'raw_score_unit' : raw_score_unit,
                                 'confidence_classification' : 'null'
                                 }
                     
-                    site_dict = {'site_id' : single_chain_df.loc[residue, "atom_ID"][i],
-                                'label' : single_chain_df.loc[residue, "type"][i][0]
+                    score_label = categorise_hotspot_score(raw_score, raw_score_unit)
+                    site_dict = {'site_id' : site_id_ref,
+                                'label' : score_label
                                 }
                     
                     residue_dict['site_data'].append(atom_dict)
                     final_dict['sites'].append(site_dict)
             except:
+                raise
                 print(f"Error found for {residue}")
 
             chain_dict['residues'].append(residue_dict)
@@ -177,6 +212,9 @@ def find_hotspots(file, args, profile=False):
 
 
 if __name__ == '__main__':
+
+    retainable_files = ['cavity',]
+    
     parser = argparse.ArgumentParser(description='Run Hotspots on all suitable files in a subdirectory')
     parser.add_argument('input_dir',
                         help='the subdirectory containing the input files',
@@ -184,6 +222,11 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--sort',
                         action='store_true',
                         help='sort all files by size and run smallest first')
+    parser.add_argument('--retain', 
+                        choices=retainable_files,
+                        default=[],
+                        nargs='*',
+                        help='retain intermediate files')
     args = parser.parse_args()
 
     input_dir = WORKING_DIR / args.input_dir  
@@ -231,7 +274,7 @@ if __name__ == '__main__':
             print(f"{pdb_id} already processed")
             continue
         
-        try:
+        if 1:#try:
             timings = find_hotspots(file, args, profile=False)
             print(f"\n{file} processed in {timings['total']:.1f} seconds")
 
@@ -245,5 +288,5 @@ if __name__ == '__main__':
             print(f"{len(ref_df)} of {len(list_of_files)} files complete!\n")
             ref_df.to_csv("processed_files_and_timings.csv", index=False)
 
-        except Exception as error:
+        else:#except Exception as error:
             print(f"An error occurred for {file}:", type(error).__name__, "–", error)

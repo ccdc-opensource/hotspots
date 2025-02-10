@@ -20,6 +20,7 @@ import operator
 import random
 import shutil
 import sys
+import os
 import tempfile
 import time
 from functools import reduce
@@ -355,6 +356,7 @@ class Runner(object):
             """
             return int(float(500) / self.nrotations ** 3)
 
+
     class _Sampler(object):
         """
         Samples one or more grids with a probe molecule
@@ -610,7 +612,7 @@ class Runner(object):
                 # else:
                 #     return sampled_probes
 
-    def __init__(self, settings=None):
+    def __init__(self, settings=None, output_path=None, pdb_id=None, save_cavity=False):
         self.out_grids = {}
         self.super_grids = {}
         self.buriedness = None
@@ -620,6 +622,10 @@ class Runner(object):
             self.sampler_settings = self.Settings()
         else:
             self.sampler_settings = settings
+            
+        self.output_path = output_path
+        self.pdb_id = pdb_id
+        self.save_cavity = save_cavity
 
     @property
     def protein(self):
@@ -778,7 +784,7 @@ class Runner(object):
         :return:
         """
         num = int(num)
-        if num in range(0, int(multiprocessing.cpu_count())):
+        if num in range(0, int(multiprocessing.cpu_count())+1):
             self._nprocesses = num
         else:
             raise OSError("CPU count = {}".format(multiprocessing.cpu_count()))
@@ -907,9 +913,23 @@ class Runner(object):
         if self.buriedness_method.lower() == 'ghecom' and self.buriedness is None:
             print("    method: Ghecom")
             out_grid = self.superstar_grids[0].buriedness.copy_and_clear()
+            
+            cavity_file = "ghecom_out.pdb"
+            if self.pdb_id:
+                cavity_file = f"{self.pdb_id}_{cavity_file}"
+            if self.output_path:
+                cavity_file = os.path.join(self.output_path, cavity_file)
 
             ghecom = Ghecom()
-            path = ghecom.run(self.protein)
+            
+            path = cavity_file if self.save_cavity and os.path.isfile(cavity_file) else None
+            if not path:
+                path = ghecom.run(self.protein)
+                if self.save_cavity:
+                    shutil.copy2(path, cavity_file)
+            else:
+                print(f"    reusing cavity file: {path}")
+
 
             t_p2g = perf_counter()
             self.buriedness = ghecom.pdb_to_grid(path, out_grid)
@@ -1114,7 +1134,6 @@ class Runner(object):
             self.sampler_settings = settings
 
         if self.sampler_settings.return_probes is True:
-            print('here')
             self._calc_hotspots(return_probes=True)
 
         else:

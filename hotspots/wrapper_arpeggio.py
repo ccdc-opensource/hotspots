@@ -482,7 +482,7 @@ class Arpeggio:
 
         elif p_residue_index in self.protein_water_index_dic:
             p_residue_obj = self.protein.waters[self.protein_water_index_dic[p_residue_index]]
-            p_atom_obj = [a for a in p_residue_obj.atoms if a.atomic_symbol is not "H"]
+            p_atom_obj = [a for a in p_residue_obj.atoms if a.atomic_symbol != "H"]
 
         elif p_residue_index in self.protein_ligand_index_dic:
             p_residue_obj = self.protein.ligands[self.protein_ligand_index_dic[p_residue_index]]
