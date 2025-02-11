@@ -1,8 +1,8 @@
-Instructions:
+Instructions for using Fragment Hotspots in the context of the BioChemGraph project:
 
 1 - clone the git repo at https://github.com/ccdc-opensource/hotspots
-2 - move to the new local repo, and checkout the v106_EBI branch
-	$ git checkout v106_EBI
+2 - move to the new local repo, and checkout the v107_EBI branch
+	$ git checkout v107_EBI
 3 - use the environment.yaml file to create a new environment that will be called csd_hotspots
 	$ conda env create -f environment.yaml
 4 - change to the new environment
@@ -27,5 +27,4 @@ If you want to run the same file again you can either edit or delete this csv fi
 
 The ''--retain'' command line option allows intermediate files to be retained - current options are:
 
-  * mol2 - retain MOL2 file of protein after addition of hydrogens and removal of waters, cofactors and ligands. 
   * cavity - retain output of cavity detection step - currently only applies for Ghecom cavity detection.
