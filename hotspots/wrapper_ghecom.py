@@ -57,9 +57,9 @@ class Ghecom(object):
         lines = Helper.get_lines_from_file(path)
         for line in lines:
             if line.startswith("HETATM"):
-                coordinates = (float(line[31:38]),
-                               float(line[39:46]),
-                               float(line[47:54]))
+                coordinates = (float(line[30:38]),
+                               float(line[38:46]),
+                               float(line[46:54]))
                 rinacc = float(line[61:66])
                 i, j, k = template.point_to_indices(coordinates)
                 nx, ny, nz = template.nsteps
