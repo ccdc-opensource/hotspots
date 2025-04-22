@@ -83,6 +83,7 @@ def find_hotspots(file, args, profile=False):
 
     settings = Runner.Settings()
     settings.nrotations = NUM_ROTS
+    settings.fix_seeds = args.fix_seeds
    
     # Only SuperStar jobs are parallelised (one job per processor). By default there are 3 jobs, when calculating charged interactions there are 5.
     print("file_ID =", pdb_id)
@@ -222,6 +223,9 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--sort',
                         action='store_true',
                         help='sort all files by size and run smallest first')
+    parser.add_argument('--fix_seeds', 
+                        action='store_true',
+                        help='use fixed random seeds; use to generate reproducible output')
     parser.add_argument('--retain', 
                         choices=retainable_files,
                         default=[],

@@ -337,16 +337,18 @@ class Runner(object):
         :param bool polar_contributions: allow carbon atoms of probes with polar atoms to contribute to the apolar output map.
         :param bool return_probes: Generate a sorted list of molecule objects, corresponding to probe poses
         :param bool sphere_maps: When setting the probe score on the output maps, set it for a sphere (radius 1.5) instead of a single point.
+        :param bool fix_seeds: use fixed random seeds when sampling map
         """
 
         def __init__(self, nrotations=3000, apolar_translation_threshold=15, polar_translation_threshold=15,
-                     polar_contributions=False, return_probes=False, sphere_maps=False):
+                     polar_contributions=False, return_probes=False, sphere_maps=False, fix_seeds=False):
             self.nrotations = nrotations
             self.apolar_translation_threshold = apolar_translation_threshold
             self.polar_translation_threshold = polar_translation_threshold
             self.polar_contributions = polar_contributions
             self.return_probes = return_probes
             self.sphere_maps = sphere_maps
+            self.fix_seeds = fix_seeds
 
         @property
         def _num_gp(self):
@@ -452,14 +454,34 @@ class Runner(object):
             :return: tup, (a,b,c,d)
             """
             quaternions = []
+
+            # Based on averages from several runs
+            seed = 1741620750.3308594
+            delta = 0.000005472091
+
             i = 1
             if self.settings.nrotations > 1:
                 while i <= self.settings.nrotations:
+                    if self.settings.fix_seeds:
+                        seed += delta
+                        random.seed(seed)
                     r1 = random.uniform(-1, 1)
+
+                    if self.settings.fix_seeds:                  
+                        seed += delta
+                        random.seed(seed)
                     r2 = random.uniform(-1, 1)
+
                     s1 = r1 * r1 + r2 * r2
                     if s1 < 1:
+                        if self.settings.fix_seeds:
+                            seed += delta
+                            random.seed(seed)
                         r3 = random.uniform(-1, 1)
+
+                        if self.settings.fix_seeds:
+                            seed += delta
+                            random.seed(seed)
                         r4 = random.uniform(-1, 1)
 
                         s2 = r3 * r3 + r4 * r4
