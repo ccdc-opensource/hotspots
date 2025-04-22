@@ -25,6 +25,8 @@ There will also be another csv file containing information about the timings for
 This second csv file also acts as a record of the files processed so far, so if the program crashes it will check automatically to avoid repeating files. 
 If you want to run the same file again you can either edit or delete this csv file.
 
+The ''--fix_seeds'' command line option will fix the seeds used for randomly sampling maps to enable comparison of results between runs.
+
 The ''--retain'' command line option allows intermediate files to be retained - current options are:
 
   * cavity - retain output of cavity detection step - currently only applies for Ghecom cavity detection.
